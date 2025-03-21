@@ -8,33 +8,53 @@ struct VideoPlayerView: View {
     @StateObject private var viewModel = VideoPlayerViewModel()
     
     var body: some View {
-        ZStack {
-            if let player = viewModel.player {
-                VideoPlayerControllerRepresentable(player: player)
-                    .aspectRatio(contentMode: .fill)
-                    .clipped()
-            } else {
-                Rectangle()
-                    .fill(Color(.systemGray6))
-                    .overlay {
-                        Image(systemName: "play.circle")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 30, height: 30)
-                            .foregroundColor(.gray)
-                    }
+        GeometryReader { geometry in
+            ZStack {
+                if let player = viewModel.player {
+                    VideoPlayerControllerRepresentable(player: player)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .overlay(
+                            Button(action: {
+                                Task {
+                                    await viewModel.togglePlayback()
+                                }
+                            }) {
+                                Rectangle()
+                                    .fill(Color.clear)
+                                    .overlay(
+                                        Group {
+                                            if viewModel.isPaused {
+                                                Image(systemName: "play.circle.fill")
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fit)
+                                                    .frame(width: 50, height: 50)
+                                                    .foregroundColor(.white)
+                                                    .opacity(0.8)
+                                            }
+                                        }
+                                    )
+                            }
+                        )
+                } else {
+                    Rectangle()
+                        .fill(Color(.systemGray6))
+                        .overlay {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                        }
+                }
             }
         }
-        .task {
-            await viewModel.setupPlayer(with: url)
+        .onAppear {
+            Task {
+                await viewModel.setupPlayer(with: url)
+            }
         }
         .onChange(of: isVisible) { newValue in
-            Task { @MainActor in
-                await viewModel.handleVisibilityChange(isVisible: newValue)
-            }
+            viewModel.handleVisibilityChange(isVisible: newValue)
         }
         .onDisappear {
-            Task { @MainActor in
+            Task {
                 await viewModel.cleanup()
             }
         }
@@ -51,104 +71,124 @@ private struct VideoPlayerControllerRepresentable: UIViewControllerRepresentable
         controller.videoGravity = .resizeAspectFill
         controller.view.backgroundColor = .clear
         
-        // Disable user interaction
-        controller.view.isUserInteractionEnabled = false
+        // Disable gesture recognizers in AVPlayerViewController
+        controller.view.gestureRecognizers?.forEach { gesture in
+            gesture.isEnabled = false
+        }
         
         return controller
     }
     
     func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
-        if controller.player !== player {
-            controller.player = player
-        }
+        controller.player = player
     }
 }
 
 @MainActor
 final class VideoPlayerViewModel: ObservableObject {
     @Published private(set) var player: AVPlayer?
+    @Published private(set) var isPaused: Bool = false
     private var timeObserver: Any?
     private var loopObserver: NSObjectProtocol?
     private var playerItem: AVPlayerItem?
     private var isVisible = false
     
+    
     func setupPlayer(with url: URL) async {
+        // Cleanup existing player first
         await cleanup()
         
         do {
-            // Create asset and load essential properties
+            // Configure audio session
+            try await AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try await AVAudioSession.sharedInstance().setActive(true)
+            
+            // Create asset and player item
             let asset = AVURLAsset(url: url)
-            
-            // Load asset properties
-            await asset.loadValues(forKeys: ["playable", "duration"])
-            
-            guard asset.isPlayable else {
-                print("Asset is not playable: \(url)")
-                return
-            }
-            
-            // Create player item
             let playerItem = AVPlayerItem(asset: asset)
             self.playerItem = playerItem
             
-            // Configure player
-            let newPlayer = AVPlayer(playerItem: playerItem)
-            newPlayer.isMuted = true
-            newPlayer.volume = 0
-            newPlayer.actionAtItemEnd = .none
+            // Create and configure player
+            let player = AVPlayer(playerItem: playerItem)
+            player.actionAtItemEnd = .none
             
-            // Set up looping
+            // Set up looping with weak self
             loopObserver = NotificationCenter.default.addObserver(
                 forName: .AVPlayerItemDidPlayToEndTime,
                 object: playerItem,
                 queue: .main) { [weak self] _ in
-                    self?.handlePlaybackEnd()
+                    Task { @MainActor [weak self] in
+                        await self?.handlePlaybackEnd()
+                    }
                 }
             
-            // Add periodic time observer for stall handling
+            // Add periodic time observer with weak self
             let interval = CMTime(seconds: 0.5, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-            timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] _ in
-                self?.handlePlaybackStall()
+            timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] _ in
+                guard let self = self else { return }
+                self.handlePlaybackStall()
             }
             
             // Update state
-            self.player = newPlayer
+            self.player = player
             
             // Start playback if visible
             if isVisible {
-                try? await newPlayer.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
-                newPlayer.play()
+                try? await player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+                if !isPaused {
+                    player.play()
+                }
             }
-            
         } catch {
             print("Failed to setup player for \(url): \(error)")
+            await cleanup()
         }
     }
     
-    private func handlePlaybackEnd() {
-        Task { @MainActor in
-            guard let player = player, isVisible else { return }
-            try? await player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
-            player.play()
+    private func handlePlaybackEnd() async {
+        guard let currentPlayer = player, isVisible else { return }
+        do {
+            try await currentPlayer.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+            if !isPaused {
+                currentPlayer.play()
+            }
+        } catch {
+            print("Failed to handle playback end: \(error)")
         }
     }
     
     private func handlePlaybackStall() {
-        guard let player = player, isVisible else { return }
-        if player.timeControlStatus == .waitingToPlayAtSpecifiedRate {
-            player.playImmediately(atRate: 1.0)
+        guard let currentPlayer = player, isVisible, !isPaused else { return }
+        if currentPlayer.timeControlStatus == .waitingToPlayAtSpecifiedRate {
+            currentPlayer.playImmediately(atRate: 1.0)
         }
     }
     
-    func handleVisibilityChange(isVisible: Bool) async {
+    func togglePlayback() async {
+        guard let currentPlayer = player else { return }
+        
+        if currentPlayer.timeControlStatus == .playing {
+            currentPlayer.pause()
+            isPaused = true
+        } else {
+            currentPlayer.play()
+            isPaused = false
+        }
+    }
+    
+    func handleVisibilityChange(isVisible: Bool) {
         self.isVisible = isVisible
-        guard let player = player else { return }
+        guard let currentPlayer = player else { return }
         
         if isVisible {
-            try? await player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
-            player.play()
+            Task { @MainActor in
+                try? await currentPlayer.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+                if !isPaused {
+                    currentPlayer.play()
+                }
+            }
         } else {
-            player.pause()
+            currentPlayer.pause()
         }
     }
     
@@ -161,7 +201,7 @@ final class VideoPlayerViewModel: ObservableObject {
             NotificationCenter.default.removeObserver(loopObserver)
         }
         
-        // Reset state
+        // Reset observers
         timeObserver = nil
         loopObserver = nil
         
@@ -170,12 +210,9 @@ final class VideoPlayerViewModel: ObservableObject {
         player?.replaceCurrentItem(with: nil)
         player = nil
         playerItem = nil
-    }
-    
-    deinit {
-        Task { @MainActor in
-            await cleanup()
-        }
+        
+        // Deactivate audio session
+        try? await AVAudioSession.sharedInstance().setActive(false)
     }
 }
 

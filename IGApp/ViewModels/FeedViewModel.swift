@@ -35,11 +35,11 @@ final class FeedViewModel: ObservableObject {
                  caption: "Mixed media post 📸🎬"),
             
             Post(mediaType: .image,
-                 imageURL: Bundle.main.url(forResource: "image3", withExtension: "jpg"),
+                 imageURL: Bundle.main.url(forResource: "image1", withExtension: "jpg"),
                  caption: "Nature's beauty 🌿"),
             
             Post(mediaType: .video,
-                 videoURL: Bundle.main.url(forResource: "video3", withExtension: "mp4"),
+                 videoURL: Bundle.main.url(forResource: "video1", withExtension: "mp4"),
                  caption: "City life 🌆")
         ]
         
