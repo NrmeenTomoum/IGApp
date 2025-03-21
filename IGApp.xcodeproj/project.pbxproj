@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		21F44B842D8B40390088519A /* image1.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 21F44B832D8B40390088519A /* image1.jpg */; };
+		21F44B8C2D8B40AF0088519A /* image2.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 21F44B8B2D8B40AF0088519A /* image2.jpg */; };
+		21F44BCD2D8B79470088519A /* video1.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 21F44BCC2D8B79470088519A /* video1.mp4 */; };
+		21F44BCF2D8B7ACA0088519A /* video2.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 21F44BCE2D8B7ACA0088519A /* video2.mp4 */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		21F44B4D2D8B33F20088519A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +34,10 @@
 		21F44B3C2D8B33F10088519A /* IGApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IGApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		21F44B4C2D8B33F20088519A /* IGAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IGAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		21F44B562D8B33F20088519A /* IGAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IGAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		21F44B832D8B40390088519A /* image1.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = image1.jpg; sourceTree = "<group>"; };
+		21F44B8B2D8B40AF0088519A /* image2.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = image2.jpg; sourceTree = "<group>"; };
+		21F44BCC2D8B79470088519A /* video1.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = video1.mp4; sourceTree = "<group>"; };
+		21F44BCE2D8B7ACA0088519A /* video2.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = video2.mp4; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,6 +86,10 @@
 		21F44B332D8B33F10088519A = {
 			isa = PBXGroup;
 			children = (
+				21F44BCC2D8B79470088519A /* video1.mp4 */,
+				21F44BCE2D8B7ACA0088519A /* video2.mp4 */,
+				21F44B832D8B40390088519A /* image1.jpg */,
+				21F44B8B2D8B40AF0088519A /* image2.jpg */,
 				21F44B3E2D8B33F10088519A /* IGApp */,
 				21F44B4F2D8B33F20088519A /* IGAppTests */,
 				21F44B592D8B33F20088519A /* IGAppUITests */,
@@ -195,6 +210,8 @@
 			);
 			mainGroup = 21F44B332D8B33F10088519A;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 21F44B3D2D8B33F10088519A /* Products */;
 			projectDirPath = "";
@@ -212,6 +229,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				21F44BCF2D8B7ACA0088519A /* video2.mp4 in Resources */,
+				21F44BCD2D8B79470088519A /* video1.mp4 in Resources */,
+				21F44B8C2D8B40AF0088519A /* image2.jpg in Resources */,
+				21F44B842D8B40390088519A /* image1.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

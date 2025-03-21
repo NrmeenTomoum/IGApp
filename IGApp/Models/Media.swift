@@ -1,3 +1,11 @@
+//
+//  Media.swift
+//  IGApp
+//
+//  Created by Nermeen Tomoum on 19/03/2025.
+//
+
+
 import Foundation
 
 enum Media: Identifiable {
